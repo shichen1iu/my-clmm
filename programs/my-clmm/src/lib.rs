@@ -89,4 +89,14 @@ pub mod my_clmm {
     pub fn update_pool_status(ctx: Context<UpdatePoolStatus>, status: u8) -> Result<()> {
         instructions::update_pool_status(ctx, status)
     }
+
+    /// 5.Creates an operation account for the program
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx`- The context of accounts
+    ///
+    pub fn create_operation_account(ctx: Context<CreateOperationAccount>) -> Result<()> {
+        instructions::create_operation_account(ctx)
+    }
 }

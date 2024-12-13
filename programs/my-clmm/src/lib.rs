@@ -99,4 +99,23 @@ pub mod my_clmm {
     pub fn create_operation_account(ctx: Context<CreateOperationAccount>) -> Result<()> {
         instructions::create_operation_account(ctx)
     }
+
+    /// 6.Update the operation account
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx`- The context of accounts
+    /// * `param`- The vaule can be 0 | 1 | 2 | 3, otherwise will report a error
+    /// * `keys`- update operation owner when the `param` is 0
+    ///           remove operation owner when the `param` is 1
+    ///           update whitelist mint when the `param` is 2
+    ///           remove whitelist mint when the `param` is 3
+    ///
+    pub fn update_operation_account(
+        ctx: Context<UpdateOperationAccount>,
+        param: u8,
+        keys: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::update_operation_account(ctx, param, keys)
+    }
 }

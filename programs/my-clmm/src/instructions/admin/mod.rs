@@ -9,3 +9,6 @@ pub use create_operation_account::*;
 
 pub mod update_operation_account;
 pub use update_operation_account::*;
+
+pub mod transfer_reward_owner;
+pub use transfer_reward_owner::*;

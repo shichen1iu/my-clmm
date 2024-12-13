@@ -118,4 +118,18 @@ pub mod my_clmm {
     ) -> Result<()> {
         instructions::update_operation_account(ctx, param, keys)
     }
+
+    /// 7.Transfer reward owner
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx`- The context of accounts
+    /// * `new_owner`- new owner pubkey
+    ///
+    pub fn transfer_reward_owner<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, TransferRewardOwner<'info>>,
+        new_owner: Pubkey,
+    ) -> Result<()> {
+        instructions::transfer_reward_owner(ctx, new_owner)
+    }
 }

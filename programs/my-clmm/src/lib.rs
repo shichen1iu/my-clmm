@@ -78,4 +78,15 @@ pub mod my_clmm {
     ) -> Result<()> {
         instructions::create_pool(ctx, sqrt_price_x64, open_time)
     }
+
+    /// 4.Update pool status for given vaule
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx`- The context of accounts
+    /// * `status` - The vaule of status
+    ///
+    pub fn update_pool_status(ctx: Context<UpdatePoolStatus>, status: u8) -> Result<()> {
+        instructions::update_pool_status(ctx, status)
+    }
 }

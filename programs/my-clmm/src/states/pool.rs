@@ -134,6 +134,7 @@ impl PoolState {
         + 8 * 16
         + 512;
 
+    //初始化池子
     pub fn initialize(
         &mut self,
         bump: u8,
@@ -188,6 +189,11 @@ impl PoolState {
         self.observation_key = observation_state_key;
 
         Ok(())
+    }
+
+    //更新池子的状态
+    pub fn set_status(&mut self, status: u8) {
+        self.status = status
     }
 }
 

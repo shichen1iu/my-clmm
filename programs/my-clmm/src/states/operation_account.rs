@@ -77,4 +77,9 @@ impl OperationState {
         // update
         self.whitelist_mints[0..whitelist_mints.len()].copy_from_slice(whitelist_mints.as_slice());
     }
+
+    //判断传入的pubkey是否是运营人员
+    pub fn validate_operation_owner(&self, owner: Pubkey) -> bool {
+        owner != Pubkey::default() && self.operation_owners.contains(&owner)
+    }
 }

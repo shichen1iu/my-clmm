@@ -6,3 +6,6 @@ pub use create_pool::*;
 
 pub mod update_pool_status;
 pub use update_pool_status::*;
+
+pub mod initialize_reward;
+pub use initialize_reward::*;

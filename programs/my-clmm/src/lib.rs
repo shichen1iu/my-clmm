@@ -132,4 +132,21 @@ pub mod my_clmm {
     ) -> Result<()> {
         instructions::transfer_reward_owner(ctx, new_owner)
     }
+
+    /// 8.Initialize a reward info for a given pool and reward index
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx`- The context of accounts
+    /// * `reward_index` - the index to reward info
+    /// * `open_time` - reward open timestamp
+    /// * `end_time` - reward end timestamp
+    /// * `emissions_per_second_x64` - Token reward per second are earned per unit of liquidity.
+    ///
+    pub fn initialize_reward(
+        ctx: Context<InitializeReward>,
+        param: InitializeRewardParam,
+    ) -> Result<()> {
+        instructions::initialize_reward(ctx, param)
+    }
 }

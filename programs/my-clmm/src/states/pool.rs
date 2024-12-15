@@ -1,8 +1,8 @@
+use crate::error::ErrorCode;
+use crate::util::get_recent_epoch;
 use anchor_lang::prelude::*;
 
-use crate::util::get_recent_epoch;
-
-use super::AmmConfig;
+use super::{AmmConfig, OperationState};
 use anchor_spl::token_interface::Mint;
 pub const REWARD_NUM: usize = 3;
 
@@ -10,6 +10,13 @@ pub const POOL_SEED: &str = "pool";
 pub const POOL_VAULT_SEED: &str = "pool_vault";
 pub const POOL_REWARD_VAULT_SEED: &str = "pool_reward_vault";
 pub const POOL_TICK_ARRAY_BITMAP_SEED: &str = "pool_tick_array_bitmap_extension";
+
+// reward 的时间限制
+pub mod reward_period_limit {
+    pub const MIN_REWARD_PERIOD: u64 = 7 * 24 * 60 * 60;
+    pub const MAX_REWARD_PERIOD: u64 = 90 * 24 * 60 * 60;
+    pub const INCREASE_EMISSIONES_PERIOD: u64 = 72 * 60 * 60;
+}
 
 /// PDA of `[POOL_SEED, config, token_mint_0, token_mint_1]`
 #[account(zero_copy(unsafe))]
@@ -195,6 +202,93 @@ impl PoolState {
     pub fn set_status(&mut self, status: u8) {
         self.status = status
     }
+
+    pub fn initialize_reward(
+        &mut self,
+        open_time: u64,                   // 奖励的开始时间
+        end_time: u64,                    // 奖励的结束时间
+        reward_per_second_x64: u128,      // 每秒发放的奖励数量，Q64.64 格式
+        token_mint: &Pubkey,              // 奖励代币的铸造地址
+        token_vault: &Pubkey,             // 奖励代币的金库地址
+        authority: &Pubkey,               // 授权管理奖励的地址
+        operation_state: &OperationState, // 操作状态账户，用于验证白名单
+    ) -> Result<()> {
+        // 获取当前奖励信息数组
+        let reward_infos = self.reward_infos;
+
+        // 查找第一个未初始化的奖励槽位
+        let lowest_index = match reward_infos.iter().position(|r| !r.initialized()) {
+            Some(lowest_index) => lowest_index, // 找到未初始化的槽位
+            None => return Err(ErrorCode::FullRewardInfo.into()), // 如果所有槽位都已满，返回错误
+        };
+
+        // 确保槽位索引在有效范围内
+        if lowest_index >= REWARD_NUM {
+            return Err(ErrorCode::FullRewardInfo.into());
+        }
+
+        // 收集当前已使用的奖励代币地址
+        let reward_mints: Vec<Pubkey> = reward_infos
+            .into_iter()
+            .map(|item| item.token_mint)
+            .collect();
+
+        // 确保新的奖励代币没有被重复使用
+        require!(
+            !reward_mints.contains(token_mint),
+            ErrorCode::RewardTokenAlreadyInUse
+        );
+
+        // 获取白名单中的代币地址
+        let whitelist_mints = operation_state.whitelist_mints.to_vec();
+
+        // 如果是倒数第二个奖励槽位
+        if lowest_index == REWARD_NUM - 2 {
+            // 如果池子的两个代币都还没被用作奖励代币
+            if !reward_mints.contains(&self.token_mint_0)
+                && !reward_mints.contains(&self.token_mint_1)
+            {
+                // 那么新的奖励代币必须是:
+                // 1. 池子中的token_0，或者
+                // 2. 池子中的token_1，或者
+                // 3. 在白名单中的代币
+                require!(
+                    *token_mint == self.token_mint_0
+                        || *token_mint == self.token_mint_1
+                        || whitelist_mints.contains(token_mint),
+                    ErrorCode::ExceptPoolVaultMint
+                );
+            }
+        } else if lowest_index == REWARD_NUM - 1 {
+            // 如果是最后一个奖励槽位，确保授权地址是管理员或经过验证的操作所有者
+            require!(
+                *authority == crate::admin::id()
+                    || operation_state.validate_operation_owner(*authority),
+                ErrorCode::NotApproved
+            );
+        }
+
+        // 初始化奖励信息
+        self.reward_infos[lowest_index].last_update_time = open_time;
+        self.reward_infos[lowest_index].open_time = open_time;
+        self.reward_infos[lowest_index].end_time = end_time;
+        self.reward_infos[lowest_index].emissions_per_second_x64 = reward_per_second_x64;
+        self.reward_infos[lowest_index].token_mint = *token_mint;
+        self.reward_infos[lowest_index].token_vault = *token_vault;
+        self.reward_infos[lowest_index].authority = *authority;
+
+        // 如果启用了日志记录功能，输出当前奖励信息
+        #[cfg(feature = "enable-log")]
+        msg!(
+            "reward_index:{}, reward_infos:{:?}",
+            lowest_index,
+            self.reward_infos[lowest_index],
+        );
+
+        // 更新最近的 epoch
+        self.recent_epoch = get_recent_epoch()?;
+        Ok(())
+    }
 }
 
 /// 奖励状态与下面的u8相对应
@@ -248,6 +342,11 @@ impl RewardInfo {
             authority,
             ..Default::default()
         }
+    }
+
+    pub fn initialized(&self) -> bool {
+        // 检查 token_mint 是否不等于默认的 Pubkey
+        self.token_mint.ne(&Pubkey::default())
     }
 }
 
